@@ -260,6 +260,21 @@ body.short .spin{padding:10px 24px}
 .camq:hover,.camq:focus-visible{opacity:.9}
 .camq[aria-pressed="true"]{opacity:.6;color:var(--ink);border-color:var(--red)}
 .camq svg{width:22px;height:22px}
+.task-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.task-form .btn{justify-self:start}
+@media (max-width:520px){.task-form{grid-template-columns:1fr}}
+.task-list{margin:0;padding-left:26px;display:flex;flex-direction:column;gap:4px}
+.task-list li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--night)}
+.task-list .tx{flex:1;min-width:0}
+.task-list .tx b{font-family:var(--f-display);font-weight:400;font-size:14px;display:block;word-break:break-word}
+.task-list .tx span{font-size:12px;color:var(--yellow)}
+.task-list .np{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;white-space:nowrap}
+.cam-bar .camr{display:none;gap:4px}
+.cam.split .cam-bar{display:flex;position:absolute;top:0;left:0;right:0;z-index:1;background:rgba(20,11,36,.55);opacity:.45;cursor:default;transition:opacity .2s}
+.cam.split .cam-bar:hover,.cam.split .cam-bar:focus-within{opacity:1}
+.cam.split .cam-bar .camr{display:flex}
+.cam.split #camSz{display:none}
+.cam-bar .camr button[aria-pressed="true"]{color:var(--ink);border-color:var(--yellow)}
 .drawer h4{margin:4px 0 0;font-size:13px;color:var(--muted);font-weight:700}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:30;width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){.spin:hover{animation:none}}
@@ -289,6 +304,7 @@ body.short .spin{padding:10px 24px}
     <div class="menu" id="menu" hidden>
       <button type="button" id="quickAdd">＋ 臨時加人</button>
       <button type="button" id="openDrawer">名單 / 設定</button>
+      <button type="button" id="quickTask">＋ 臨時加任務</button>
       <button type="button" id="soundBtn" aria-pressed="true">音效 開</button>
       <button type="button" id="fsBtn">全螢幕</button>
       <button type="button" id="menuCam">現場鏡頭：關</button>
@@ -421,6 +437,25 @@ body.short .spin{padding:10px 24px}
     <span class="msg" id="addMsg"></span>
   </section>
 
+  <section class="sec" id="secTask">
+    <h3>任務轉盤（TASK）</h3>
+    <form class="task-form" id="taskForm" autocomplete="off">
+      <input type="text" id="taskEnIn" placeholder="English（大字）例：Sing a Song" aria-label="英文任務">
+      <input type="text" id="taskZhIn" placeholder="中文（小字）例：唱一首歌" aria-label="中文任務">
+      <label class="check"><input type="checkbox" id="taskPick" checked> 要抽人</label>
+      <button class="btn primary" type="submit">加入轉盤</button>
+    </form>
+    <span class="msg" id="taskMsg"></span>
+    <ol class="task-list" id="taskList"></ol>
+    <div class="row"><button class="btn" id="resetOpts" type="button">還原成原本 7 格</button></div>
+    <details>
+      <summary style="cursor:pointer;color:var(--muted);font-size:13px">進階：用文字一次編輯</summary>
+      <p style="margin-top:8px">每行一格：<code>中文 | English | 1</code>。最後的 <code>1</code> 代表要抽人，<code>0</code> 代表不抽人。同一個選項寫兩行，出現機率就加倍。</p>
+      <textarea id="optsInput" spellcheck="false"></textarea>
+      <div class="row"><button class="btn primary" id="saveOpts" type="button">套用文字</button></div>
+    </details>
+  </section>
+
   <section class="sec">
     <div class="row" style="justify-content:space-between">
       <h3>目前名單 <span id="listCount" style="color:var(--muted);font-weight:500"></span></h3>
@@ -485,22 +520,12 @@ body.short .spin{padding:10px 24px}
     </div>
   </section>
 
-  <section class="sec">
-    <h3>任務轉盤選項</h3>
-    <p>每行一格：<code>中文 | English | 1</code>。最後的 <code>1</code> 代表要接著抽出一個人，<code>0</code> 代表不抽人（例如全場乾杯）。同一個選項寫兩行，出現機率就加倍。</p>
-    <textarea id="optsInput" spellcheck="false"></textarea>
-    <div class="row">
-      <button class="btn primary" id="saveOpts" type="button">套用轉盤選項</button>
-      <button class="btn" id="resetOpts" type="button">還原預設</button>
-      <span class="msg" id="optsMsg"></span>
-    </div>
-  </section>
 </aside>
 <button class="camq" id="camQuick" type="button" aria-pressed="false" aria-label="鏡頭在左：開 / 關" title="鏡頭在左：開 / 關">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
 </button>
 <div class="cam" id="cam" hidden>
-  <div class="cam-bar" id="camBar"><span class="live">LIVE</span><button type="button" id="camSz">大小</button><button type="button" id="camX" aria-label="關閉鏡頭">✕</button></div>
+  <div class="cam-bar" id="camBar"><span class="live">LIVE</span><span class="camr" id="camBarRatio"><button type="button" data-v="0.33">1/3</button><button type="button" data-v="0.5">一半</button><button type="button" data-v="0.67">2/3</button></span><button type="button" id="camSz">大小</button><button type="button" id="camX" aria-label="關閉鏡頭">✕</button></div>
   <iframe id="camFrame" title="現場鏡頭" allow="autoplay; fullscreen; picture-in-picture"></iframe>
   <div class="cam-resize" id="camResize" aria-hidden="true"></div>
 </div>
@@ -1332,7 +1357,7 @@ function renderCamSetup(){
   if(window.QRCode){try{new QRCode(q,{text:pushUrl(),width:180,height:180,correctLevel:QRCode.CorrectLevel.M})}catch(e){q.textContent="QR code 產生失敗，請改用網址"}}
   else q.textContent="QR code 需要網路才能顯示，請改用網址";
   document.querySelectorAll("#camLays .lay").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lay===cam.lay));
-  document.querySelectorAll("#camRatio button").forEach(b=>b.setAttribute("aria-pressed",Math.abs(+b.dataset.v-cam.ratio)<.01));
+  document.querySelectorAll("#camRatio button,#camBarRatio button").forEach(b=>b.setAttribute("aria-pressed",Math.abs(+b.dataset.v-cam.ratio)<.01));
   document.querySelectorAll("#camSize button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.v===cam.w));
   document.querySelectorAll("#camShape button[data-v]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===cam.shape));
   $("#camAuto").checked=!!cam.auto;
@@ -1380,6 +1405,7 @@ $("#camToggle").onclick=()=>{cam.on=!cam.on;camAutoShown=false;camChanged()};
 $("#camX").onclick=()=>{cam.on=false;camAutoShown=false;camChanged()};
 $("#camSz").onclick=()=>{const s=[280,420,600];cam.w=s[(s.indexOf(cam.w)+1)%3]||420;camChanged()};
 $("#camLays").onclick=e=>{const b=e.target.closest(".lay");if(!b)return;cam.lay=b.dataset.lay;if(!cam.on)cam.on=true;camChanged()};
+$("#camBarRatio").onclick=e=>{const b=e.target.closest("button");if(!b)return;cam.ratio=+b.dataset.v;camChanged()};
 $("#camRatio").onclick=e=>{const b=e.target.closest("button");if(!b)return;cam.ratio=+b.dataset.v;camChanged()};
 $("#camSize").onclick=e=>{const b=e.target.closest("button");if(!b)return;cam.w=+b.dataset.v;camChanged()};
 $("#camShape").onclick=e=>{const b=e.target.closest("button[data-v]");if(!b)return;cam.shape=b.dataset.v;camChanged()};
@@ -1442,8 +1468,42 @@ $("#soundBtn").onclick=()=>setSound(!sound);
 $("#fsBtn").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}};
 $("#spinBtn").onclick=spin;
 $("#noRepeat").onchange=()=>{store.set("pd_norep",$("#noRepeat").checked?"1":"0");refresh()};
-$("#saveOpts").onclick=()=>{opts=parseOpts($("#optsInput").value);store.set("pd_opts4",$("#optsInput").value);if(mode==="task"){rotation=0;buildSegs();drawWheel()}$("#optsMsg").textContent=`已套用 ${opts.length} 格`};
-$("#resetOpts").onclick=()=>{$("#optsInput").value=DEFAULT_OPTS};
+const optsText=()=>opts.map(o=>`${o.zh} | ${o.en} | ${o.pick?1:0}`).join("\n");
+function setOpts(list,msg){
+  opts=list;const t=optsText();store.set("pd_opts4",t);$("#optsInput").value=t;renderTasks();
+  if(mode==="task"&&!spinning){buildSegs();drawWheel()}
+  if(msg)$("#taskMsg").textContent=msg;
+}
+function renderTasks(){
+  const ol=$("#taskList");ol.innerHTML="";
+  opts.forEach((o,i)=>{
+    const li=document.createElement("li"),tx=document.createElement("div");tx.className="tx";
+    const b=document.createElement("b");b.textContent=o.en||o.zh;const z=document.createElement("span");z.textContent=o.en?o.zh:"";tx.append(b,z);li.append(tx);
+    if(!o.pick){const n=document.createElement("span");n.className="np";n.textContent="不抽人";li.append(n)}
+    const x=document.createElement("button");x.type="button";x.className="x";x.textContent="刪除";x.dataset.i=i;li.append(x);ol.append(li);
+  });
+}
+$("#taskList").addEventListener("click",e=>{
+  const x=e.target.closest(".x");if(!x)return;
+  if(opts.length<=2){$("#taskMsg").style.color="var(--yellow)";$("#taskMsg").textContent="轉盤至少要保留 2 格";return}
+  if(!x.classList.contains("armed")){x.classList.add("armed");x.textContent="確定？";setTimeout(()=>{if(x.isConnected){x.classList.remove("armed");x.textContent="刪除"}},2500);return}
+  const o=opts[+x.dataset.i];$("#taskMsg").style.color="var(--green)";setOpts(opts.filter((_,i)=>i!==+x.dataset.i),`已刪除 ${o.en||o.zh}`);
+});
+$("#taskForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const en=$("#taskEnIn").value.trim().replace(/\|/g,"/"),zh=$("#taskZhIn").value.trim().replace(/\|/g,"/");
+  if(!en&&!zh){$("#taskMsg").style.color="var(--yellow)";$("#taskMsg").textContent="請至少填英文或中文";$("#taskEnIn").focus();return}
+  $("#taskMsg").style.color="var(--green)";
+  setOpts(opts.concat([{en,zh:zh||en,pick:$("#taskPick").checked}]),`已加入「${en||zh}」，轉盤現在 ${opts.length+1} 格`);
+  $("#taskEnIn").value="";$("#taskZhIn").value="";$("#taskPick").checked=true;$("#taskEnIn").focus();
+});
+$("#saveOpts").onclick=()=>{$("#taskMsg").style.color="var(--green)";setOpts(parseOpts($("#optsInput").value),"已套用文字內容")};
+let optsResetArm=false;
+$("#resetOpts").onclick=e=>{
+  if(!optsResetArm){optsResetArm=true;e.target.textContent="確定？臨時加的任務會刪除";setTimeout(()=>{optsResetArm=false;e.target.textContent="還原成原本 7 格"},3000);return}
+  optsResetArm=false;e.target.textContent="還原成原本 7 格";$("#taskMsg").style.color="var(--green)";setOpts(parseOpts(DEFAULT_OPTS),"已還原成原本 7 格");
+};
+$("#quickTask").onclick=()=>{openD(true,$("#taskEnIn"));setTimeout(()=>$("#secTask").scrollIntoView({block:"start"}),30)};
 let resetArm=false;
 $("#resetBtn").onclick=e=>{
   if(!resetArm){resetArm=true;e.target.textContent="再按一次確認";setTimeout(()=>{resetArm=false;e.target.textContent="清除紀錄"},2500);return}
@@ -1460,7 +1520,7 @@ addEventListener("keydown",e=>{
   }
 });
 addEventListener("resize",sizeWheel);
-load();sizeWheel();renderCamSetup();applyCam();
+load();sizeWheel();renderTasks();renderCamSetup();applyCam();
 const redraw=()=>{wheelDirty=true;if(!spinning)drawWheel()};
 if(document.fonts){document.fonts.ready.then(redraw);if(document.fonts.addEventListener)document.fonts.addEventListener("loadingdone",redraw)}
 })();
