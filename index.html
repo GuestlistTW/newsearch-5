@@ -251,6 +251,15 @@ body.short .spin{padding:10px 24px}
 .pills{display:flex;gap:6px;flex-wrap:wrap}
 .pills button{background:var(--night);border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:var(--muted)}
 .pills button[aria-pressed="true"]{border-color:var(--yellow);color:var(--ink)}
+.menu .mlays{display:flex;gap:6px;padding:4px 6px 8px}
+.menu .mlays .lay{flex:1;padding:6px 4px;font-size:11px}
+.menu .mlays .lay i{width:44px;height:28px}
+.menu .msub{font-size:11px;color:var(--muted);padding:6px 12px 0;letter-spacing:.06em}
+.camq{position:fixed;z-index:29;left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;
+  background:rgba(31,18,54,.7);border:1.5px solid var(--line);color:var(--muted);opacity:.35;display:grid;place-items:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.camq:hover,.camq:focus-visible{opacity:.9}
+.camq[aria-pressed="true"]{opacity:.6;color:var(--ink);border-color:var(--red)}
+.camq svg{width:22px;height:22px}
 .drawer h4{margin:4px 0 0;font-size:13px;color:var(--muted);font-weight:700}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:30;width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){.spin:hover{animation:none}}
@@ -283,6 +292,12 @@ body.short .spin{padding:10px 24px}
       <button type="button" id="soundBtn" aria-pressed="true">音效 開</button>
       <button type="button" id="fsBtn">全螢幕</button>
       <button type="button" id="menuCam">現場鏡頭：關</button>
+      <div class="msub">鏡頭版面（點一下切換）</div>
+      <div class="mlays" id="menuLays">
+        <button class="lay" type="button" data-lay="float"><i class="f"><b></b><em></em></i>浮動</button>
+        <button class="lay" type="button" data-lay="left"><i class="l"><b></b><em></em></i>左</button>
+        <button class="lay" type="button" data-lay="top"><i class="t"><b></b><em></em></i>上</button>
+      </div>
       <button type="button" id="menuCamSet">鏡頭設定 / 版面</button>
     </div>
   </div>
@@ -481,6 +496,9 @@ body.short .spin{padding:10px 24px}
     </div>
   </section>
 </aside>
+<button class="camq" id="camQuick" type="button" aria-pressed="false" aria-label="鏡頭在左：開 / 關" title="鏡頭在左：開 / 關">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+</button>
 <div class="cam" id="cam" hidden>
   <div class="cam-bar" id="camBar"><span class="live">LIVE</span><button type="button" id="camSz">大小</button><button type="button" id="camX" aria-label="關閉鏡頭">✕</button></div>
   <iframe id="camFrame" title="現場鏡頭" allow="autoplay; fullscreen; picture-in-picture"></iframe>
@@ -1334,6 +1352,8 @@ function applyCam(preload){
   const want=show||preload?viewUrl():"";
   if(camLoaded!==want){fr.src=want||"about:blank";camLoaded=want}
   $("#menuCam").textContent="現場鏡頭："+(cam.on?"開":"關");
+  document.querySelectorAll("#menuLays .lay").forEach(b=>b.setAttribute("aria-pressed",cam.on&&b.dataset.lay===cam.lay));
+  $("#camQuick").setAttribute("aria-pressed",cam.on&&cam.lay==="left");
   if(!show&&!preload){el.hidden=true;setApp("0px","0px","0px","0px");requestAnimationFrame(sizeWheel);return}
   el.hidden=false;el.classList.toggle("preload",!show);
   const split=cam.on&&cam.lay!=="float";
@@ -1353,6 +1373,8 @@ function applyCam(preload){
 function markShort(){document.body.classList.toggle("short",innerHeight*(1-((cam.on&&(cam.lay==="top"||cam.lay==="bottom"))?cam.ratio:0))<600)}
 function camChanged(){saveCam();renderCamSetup();applyCam()}
 $("#menuCam").onclick=()=>{cam.on=!cam.on;camAutoShown=false;camChanged()};
+$("#menuLays").onclick=e=>{const b=e.target.closest(".lay");if(!b)return;cam.lay=b.dataset.lay;cam.on=true;camAutoShown=false;camChanged()};
+$("#camQuick").onclick=()=>{if(cam.on&&cam.lay==="left")cam.on=false;else{cam.lay="left";cam.on=true}camAutoShown=false;camChanged()};
 $("#menuCamSet").onclick=()=>{openD(true);renderCamSetup();setTimeout(()=>$("#secCam").scrollIntoView({block:"start"}),30)};
 $("#camToggle").onclick=()=>{cam.on=!cam.on;camAutoShown=false;camChanged()};
 $("#camX").onclick=()=>{cam.on=false;camAutoShown=false;camChanged()};
