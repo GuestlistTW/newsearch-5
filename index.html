@@ -275,6 +275,25 @@ body.short .spin{padding:10px 24px}
 .cam.split .cam-bar .camr{display:flex}
 .cam.split #camSz{display:none}
 .cam-bar .camr button[aria-pressed="true"]{color:var(--ink);border-color:var(--yellow)}
+/* phone remote page */
+body.remote{padding:0!important;overflow:hidden}
+body.remote > :not(#remote){display:none!important}
+#remote{height:100%;display:flex;flex-direction:column;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top,0px)) max(12px, env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px, env(safe-area-inset-left,0px))}
+.r-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.r-stat{font-family:var(--f-mono);font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted)}
+.r-stat.ok{color:var(--green);border-color:var(--green)}
+.r-stat.bad{color:var(--red);border-color:var(--red)}
+.r-seg button{padding:7px 12px;font-size:13px}
+.r-cam{flex:1;min-height:38vh;border-radius:14px;overflow:hidden;background:#000;border:1.5px solid var(--line)}
+.r-cam iframe{width:100%;height:100%;border:0;display:block}
+.r-info{min-height:62px;display:flex;flex-direction:column;gap:2px}
+.r-l1{font-family:var(--f-display);font-size:20px;line-height:1.15;word-break:break-word}
+.r-l2{font-weight:900;font-size:19px;color:var(--sky);word-break:break-word}
+.r-btn{width:100%;font-size:36px;padding:20px}
+.r-tip{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.menu .mstat{font-size:12px;color:var(--muted);padding:6px 12px}
+.menu .mstat.ok{color:var(--green)}
 .drawer h4{margin:4px 0 0;font-size:13px;color:var(--muted);font-weight:700}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:30;width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){.spin:hover{animation:none}}
@@ -308,6 +327,7 @@ body.short .spin{padding:10px 24px}
       <button type="button" id="soundBtn" aria-pressed="true">音效 開</button>
       <button type="button" id="fsBtn">全螢幕</button>
       <button type="button" id="menuCam">現場鏡頭：關</button>
+      <div class="mstat" id="menuRemote">手機遙控：未連線</div>
       <div class="msub">鏡頭版面（點一下切換）</div>
       <div class="mlays" id="menuLays">
         <button class="lay" type="button" data-lay="float"><i class="f"><b></b><em></em></i>浮動</button>
@@ -474,11 +494,11 @@ body.short .spin{padding:10px 24px}
 
   <section class="sec" id="secCam">
     <h3>現場鏡頭 Live camera</h3>
-    <p>1. 工作人員用手機掃下面的 QR code（或打開網址），允許相機、選<b>後置鏡頭</b>，按開始。手機畫面保持開著、不要鎖定。<br>2. 在這裡按「顯示鏡頭」，再選版面。</p>
+    <p>1. 工作人員用手機掃下面的 QR code（或打開網址），允許相機、選<b>後置鏡頭</b>，按開始。手機畫面下方的大按鈕可以直接控制轉盤（SPIN → DRAW → NEXT）。手機畫面保持開著、不要鎖定。<br>2. 在這裡按「顯示鏡頭」，再選版面。</p>
     <div class="cam-setup">
       <div class="cam-qr" id="camQR">QR code 載入中…</div>
       <div class="cam-link">
-        <span style="font-size:13px;color:var(--muted)">手機推播網址（含密碼）</span>
+        <span style="font-size:13px;color:var(--muted)" id="camLinkLabel">手機遙控鏡頭網址（含密碼）</span>
         <code id="camPush"></code>
         <div class="row"><button class="btn" id="camCopy" type="button">複製網址</button><button class="btn" id="camNew" type="button">換一組新連結</button></div>
         <span class="msg" id="camMsg"></span>
@@ -501,6 +521,8 @@ body.short .spin{padding:10px 24px}
     <div class="pills" id="camShape"><button type="button" data-v="land">橫拍 16:9</button><button type="button" data-v="port">直拍 9:16</button><button type="button" id="camHome">回到右下角</button></div>
     <p>浮動小窗可以拖曳上方的 LIVE 列移動，拖右下角調整大小。</p>
     <label class="check"><input type="checkbox" id="camAuto"> 抽出中獎者時自動跳出鏡頭，回到轉盤時自動收起（浮動小窗）</label>
+    <label class="check"><input type="checkbox" id="camRemote"> 允許手機遙控（鏡頭關閉時也保持連線，手機的大按鈕才能控制轉盤）</label>
+    <p id="camRemoteNote"></p>
   </section>
 
   <section class="sec">
@@ -1339,22 +1361,27 @@ function cfFrame(){cx.clearRect(0,0,cf.width,cf.height);
 
 /* ---------- live camera (VDO.Ninja) ---------- */
 const rid=n=>{const a="abcdefghjkmnpqrstuvwxyz23456789",u=new Uint32Array(n);crypto.getRandomValues(u);return [...u].map(x=>a[x%a.length]).join("")};
-let cam={id:"",pw:"",custom:"",on:false,lay:"float",ratio:0.33,w:420,shape:"land",x:null,y:null,auto:false};
+let cam={id:"",pw:"",custom:"",on:false,lay:"float",ratio:0.33,w:420,shape:"land",x:null,y:null,auto:false,remote:true};
 try{Object.assign(cam,JSON.parse(store.get("pd_cam","{}"))||{})}catch(e){}
 if(!cam.id){cam.id="pride"+rid(10);cam.pw=rid(8)}
 cam.on=false; // always start with the camera off
 let camAutoShown=false,camLoaded="";
 const saveCam=()=>store.set("pd_cam",JSON.stringify(cam));
-const pushUrl=()=>`https://vdo.ninja/?push=${cam.id}&password=${cam.pw}&mute`;
+const pushUrl=()=>`https://vdo.ninja/?push=${cam.id}&password=${cam.pw}&mute&webcam`;
+const canRemote=()=>location.protocol==="https:";
+const phoneUrl=()=>canRemote()?`${location.origin}${location.pathname}?cam=${encodeURIComponent(cam.id)}&pw=${encodeURIComponent(cam.pw)}`:pushUrl();
 function viewUrl(){
   let u=(cam.custom||"").trim();
   if(u&&/^https:\/\/(www\.)?vdo\.ninja\//i.test(u)){if(!/[?&]cleanoutput/i.test(u))u+="&cleanoutput";if(!/[?&]noaudio/i.test(u))u+="&noaudio";return u}
   return `https://vdo.ninja/?view=${cam.id}&password=${cam.pw}&cleanoutput&noaudio`;
 }
 function renderCamSetup(){
-  $("#camPush").textContent=pushUrl();$("#camCustom").value=cam.custom||"";
+  $("#camPush").textContent=phoneUrl();$("#camCustom").value=cam.custom||"";
+  $("#camLinkLabel").textContent=canRemote()?"手機遙控鏡頭網址（含密碼）":"手機推播網址（含密碼）";
+  $("#camRemote").checked=cam.remote!==false;
+  $("#camRemoteNote").textContent=canRemote()?"":"提醒：手機遙控只能在 GitHub 網址（https）上使用。現在這個頁面只會產生純鏡頭的網址。";
   const q=$("#camQR");q.innerHTML="";
-  if(window.QRCode){try{new QRCode(q,{text:pushUrl(),width:180,height:180,correctLevel:QRCode.CorrectLevel.M})}catch(e){q.textContent="QR code 產生失敗，請改用網址"}}
+  if(window.QRCode){try{new QRCode(q,{text:phoneUrl(),width:180,height:180,correctLevel:QRCode.CorrectLevel.M})}catch(e){q.textContent="QR code 產生失敗，請改用網址"}}
   else q.textContent="QR code 需要網路才能顯示，請改用網址";
   document.querySelectorAll("#camLays .lay").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lay===cam.lay));
   document.querySelectorAll("#camRatio button,#camBarRatio button").forEach(b=>b.setAttribute("aria-pressed",Math.abs(+b.dataset.v-cam.ratio)<.01));
@@ -1374,7 +1401,7 @@ function floatBox(){
 function setApp(t,r,b,l){const st=document.documentElement.style;st.setProperty("--app-t",t);st.setProperty("--app-r",r);st.setProperty("--app-b",b);st.setProperty("--app-l",l)}
 function applyCam(preload){
   const el=$("#cam"),fr=$("#camFrame"),show=cam.on||camAutoShown;markShort();
-  const want=show||preload?viewUrl():"";
+  const want=show||preload||(cam.remote!==false&&canRemote())?viewUrl():"";
   if(camLoaded!==want){fr.src=want||"about:blank";camLoaded=want}
   $("#menuCam").textContent="現場鏡頭："+(cam.on?"開":"關");
   document.querySelectorAll("#menuLays .lay").forEach(b=>b.setAttribute("aria-pressed",cam.on&&b.dataset.lay===cam.lay));
@@ -1411,12 +1438,57 @@ $("#camSize").onclick=e=>{const b=e.target.closest("button");if(!b)return;cam.w=
 $("#camShape").onclick=e=>{const b=e.target.closest("button[data-v]");if(!b)return;cam.shape=b.dataset.v;camChanged()};
 $("#camHome").onclick=()=>{cam.x=cam.y=null;camChanged()};
 $("#camAuto").onchange=e=>{cam.auto=e.target.checked;saveCam()};
+$("#camRemote").onchange=e=>{cam.remote=e.target.checked;camChanged()};
+
+/* ---------- phone remote: iPad side ---------- */
+const seenCmd=new Set();let remoteLast=0,stateSent="",stateAt=0;
+function advance(){
+  if(!$("#drawer").hidden||spinning)return;
+  menu(false);
+  if(!$("#splash").hidden){endSplash();return}
+  if(!$("#tstage").hidden){if(tsBusy)return;if(!$("#tsDraw").hidden&&!$("#tsDraw").disabled)tsDraw();else closeTaskStage();return}
+  if(!$("#reveal").hidden){if(!boardBusy)closeBoard();return}
+  if(!$("#board").hidden){if(boardBusy)return;if(!$("#boardDraw").disabled)boardDraw();else closeBoard();return}
+  spin();
+}
+const overlayOpen=()=>!$("#splash").hidden||!$("#tstage").hidden||!$("#board").hidden||!$("#reveal").hidden;
+function winnerLine(){const w=winners[winners.length-1];if(!w)return "";const f=natInfo(w.nat).flag;return `${f?f+" ":""}${w.name}${w.ig?" @"+w.ig:""}${w.table?" · Table "+w.table:""}`}
+function remoteState(){
+  let label="SPIN",busy=false,l1="",l2="";
+  const tl=$("#taskEn").textContent+($("#taskZh").textContent?"　"+$("#taskZh").textContent:"");
+  if(!$("#drawer").hidden){label="iPad 設定中";busy=true;l1="主持人正在調整設定"}
+  else if(spinning){label="轉動中…";busy=true;l1="轉盤轉動中"}
+  else if(!$("#splash").hidden){label="NEXT";l1=$("#spTitle").textContent;l2=$("#spSub").textContent}
+  else if(!$("#tstage").hidden){l1=$("#tsEn").textContent+"　"+$("#tsZh").textContent;
+    if(tsBusy){label="抽獎中…";busy=true}else if(!$("#tsDraw").hidden){label="DRAW"}else{label="NEXT";l2=$("#tsName").textContent?winnerLine():""}}
+  else if(!$("#reveal").hidden){label="NEXT";l1=$("#boardEn").textContent+" "+$("#boardBig").textContent;l2=winnerLine()}
+  else if(!$("#board").hidden){l1=$("#boardEn").textContent+" "+$("#boardBig").textContent+"　"+$("#boardCount").textContent;
+    if(boardBusy){label="抽獎中…";busy=true}else label=$("#boardDraw").disabled?"NEXT":"DRAW"}
+  else{l1={task:"TASK 任務轉盤",nat:"COUNTRY 國籍抽獎",table:"TABLE 桌號抽獎"}[mode];l2=""}
+  return {label,busy,l1,l2,mode,overlay:overlayOpen()||spinning};
+}
+function sendToPhone(obj){const fr=$("#camFrame");if(!camLoaded||!fr.contentWindow)return;["rpcs","pcs"].forEach(t=>{try{fr.contentWindow.postMessage({sendData:{pride:obj},type:t},"*")}catch(e){}})}
+function pushState(force){
+  const st=remoteState(),j=JSON.stringify(st),now=Date.now();
+  if(force||j!==stateSent||now-stateAt>2500){stateSent=j;stateAt=now;sendToPhone({state:st})}
+  const ok=now-remoteLast<8000,m=$("#menuRemote");m.textContent="手機遙控："+(ok?"已連線":"未連線");m.classList.toggle("ok",ok);
+}
+setInterval(()=>pushState(false),700);
+addEventListener("message",e=>{
+  const fr=$("#camFrame");if(!fr.contentWindow||e.source!==fr.contentWindow||!e.data||typeof e.data!=="object")return;
+  const d=e.data.dataReceived,c=d&&d.pride;if(!c||!c.cmd)return;
+  remoteLast=Date.now();
+  if(c.id){if(seenCmd.has(c.id))return;seenCmd.add(c.id);if(seenCmd.size>500)seenCmd.clear()}
+  if(c.cmd==="next")advance();
+  else if(c.cmd==="mode"&&["task","nat","table"].includes(c.mode)&&!overlayOpen()&&$("#drawer").hidden)pickMode(c.mode);
+  setTimeout(()=>pushState(true),60);
+});
 $("#camCustom").onchange=e=>{cam.custom=e.target.value.trim();camLoaded="";camChanged()};
 $("#camNew").onclick=e=>{
   if(!e.target.dataset.armed){e.target.dataset.armed="1";e.target.textContent="確定？手機要重新掃";setTimeout(()=>{delete e.target.dataset.armed;e.target.textContent="換一組新連結"},3000);return}
   delete e.target.dataset.armed;e.target.textContent="換一組新連結";cam.id="pride"+rid(10);cam.pw=rid(8);camLoaded="";camChanged();$("#camMsg").textContent="已換新連結，請工作人員手機重新掃 QR code";
 };
-$("#camCopy").onclick=()=>{const t=pushUrl();
+$("#camCopy").onclick=()=>{const t=phoneUrl();
   (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{$("#camMsg").textContent="已複製"},()=>{const r=document.createRange();r.selectNodeContents($("#camPush"));const s=getSelection();s.removeAllRanges();s.addRange(r);$("#camMsg").textContent="已選取，請手動複製"})};
 // drag & resize (floating window)
 function dragger(handle,onMove){
@@ -1436,6 +1508,37 @@ function camPreload(){if(cam.auto&&!cam.on)applyCam(true)}
 function camWinner(){if(cam.auto&&!cam.on){camAutoShown=true;applyCam()}}
 function camDone(){if(camAutoShown){camAutoShown=false;applyCam()}}
 addEventListener("resize",()=>{if(!$("#cam").hidden)applyCam()});
+
+/* ---------- phone remote page (?cam=ID&pw=PW) ---------- */
+const QS=new URLSearchParams(location.search),REMOTE=QS.get("cam");
+function initRemote(){
+  document.body.classList.add("remote");
+  const root=document.createElement("div");root.id="remote";
+  root.innerHTML=`<div class="r-top"><span class="r-stat" id="rStat">連線中…</span>
+    <div class="seg r-seg" id="rSeg"><button type="button" data-m="task">TASK</button><button type="button" data-m="nat">COUNTRY</button><button type="button" data-m="table">TABLE</button></div></div>
+    <div class="r-cam"><iframe id="rFrame" title="鏡頭" allow="camera *;microphone *;autoplay;fullscreen"></iframe></div>
+    <div class="r-info"><div class="r-l1" id="rL1">先在上方選後置鏡頭，開始推播</div><div class="r-l2" id="rL2"></div></div>
+    <button class="spin r-btn" id="rBtn" type="button" disabled>等待連線</button>
+    <p class="r-tip">手機請保持螢幕開啟、停在這個頁面、不要切換 App。按鈕會依現場步驟自動變成 SPIN → DRAW → NEXT。</p>`;
+  document.body.append(root);
+  const fr=$("#rFrame");fr.src=`https://vdo.ninja/?push=${encodeURIComponent(REMOTE)}&password=${encodeURIComponent(QS.get("pw")||"")}&mute&webcam`;
+  let last=0,st=null,seq=0,cool=0;
+  const send=o=>{const p={pride:{...o,id:Date.now().toString(36)+"-"+(seq++)}};["pcs","rpcs"].forEach(t=>{try{fr.contentWindow.postMessage({sendData:p,type:t},"*")}catch(e){}})};
+  addEventListener("message",e=>{if(e.source!==fr.contentWindow||!e.data||typeof e.data!=="object")return;const d=e.data.dataReceived;if(d&&d.pride&&d.pride.state){st=d.pride.state;last=Date.now();render()}});
+  function render(){
+    const ok=Date.now()-last<6000,s=$("#rStat"),b=$("#rBtn");
+    s.textContent=ok?"● 已連線 iPad":(last?"● 斷線，重新連線中…":"等待 iPad 連線…");s.className="r-stat "+(ok?"ok":(last?"bad":""));
+    if(!st||!ok){b.disabled=true;b.textContent=last?"斷線中":"等待連線";return}
+    b.textContent=st.label;b.disabled=st.busy||Date.now()<cool;
+    $("#rL1").textContent=st.l1||"";$("#rL2").textContent=st.l2||"";
+    document.querySelectorAll("#rSeg button").forEach(x=>{x.setAttribute("aria-pressed",x.dataset.m===st.mode);x.disabled=!!st.overlay});
+  }
+  setInterval(render,500);setInterval(()=>send({cmd:"ping"}),3000);
+  $("#rBtn").onclick=()=>{cool=Date.now()+900;send({cmd:"next"});render();if(navigator.vibrate)navigator.vibrate(30)};
+  $("#rSeg").onclick=e=>{const x=e.target.closest("button");if(x&&!x.disabled)send({cmd:"mode",mode:x.dataset.m})};
+  const lock=async()=>{try{if(navigator.wakeLock)await navigator.wakeLock.request("screen")}catch(e){}};
+  document.addEventListener("click",lock);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")lock()});lock();
+}
 
 /* ---------- controls ---------- */
 function setMode(m,initial){
@@ -1520,7 +1623,7 @@ addEventListener("keydown",e=>{
   }
 });
 addEventListener("resize",sizeWheel);
-load();sizeWheel();renderTasks();renderCamSetup();applyCam();
+if(REMOTE)initRemote();else{load();sizeWheel();renderTasks();renderCamSetup();applyCam();}
 const redraw=()=>{wheelDirty=true;if(!spinning)drawWheel()};
 if(document.fonts){document.fonts.ready.then(redraw);if(document.fonts.addEventListener)document.fonts.addEventListener("loadingdone",redraw)}
 })();
